@@ -108,6 +108,7 @@ void            procdump(void);
 // mp3
 int             alloc_thrd_context_id(void);
 void            free_thrd_context_id(int thrd_context_id);
+void            enable_thrdstop(void);
 void            set_thrdstop(int ticks, int thrd_context_id, uint64 thrdstop_handler);
 void            do_thrdstop(void);
 void            do_thrdresume(int thrd_context_id);

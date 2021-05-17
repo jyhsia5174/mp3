@@ -101,6 +101,12 @@ sys_uptime(void)
 uint64
 sys_thrdstop(void)
 {
+  /*
+  int i = 0;
+  while(i < 100000000)
+    i++;
+  */
+  enable_thrdstop();
   int interval, thrdstop_context_id;
   uint64 handler;
   if (argint(0, &interval) < 0)

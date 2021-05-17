@@ -115,6 +115,7 @@ found:
   p->pid = allocpid();
 
   // for mp3
+  p->thrdstop_enable = 0;
   p->thrdstop_ticks = 0;
   p->thrdstop_interval = -1;
   int i;
@@ -732,11 +733,15 @@ free_thrd_context_id(int thrd_context_id){
 }
 
 void
-set_thrdstop(int ticks, int thrd_context_id, uint64 thrdstop_handler){
+enable_thrdstop(void){
   struct proc *p = myproc();
-  // enable thrdstop
   p->thrdstop_enable = 1;
   p->thrdstop_ticks = 0;
+}
+
+void
+set_thrdstop(int ticks, int thrd_context_id, uint64 thrdstop_handler){
+  struct proc *p = myproc();
   p->thrdstop_interval = ticks;
   p->thrdstop_context_id = thrd_context_id;
   p->thrdstop_handler_pointer = thrdstop_handler;

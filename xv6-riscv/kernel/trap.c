@@ -80,6 +80,7 @@ usertrap(void)
   if(which_dev == 2)
   {
     p->thrdstop_ticks++;
+    //printf("\nticks: %d\n", p->thrdstop_ticks);
     if( p->thrdstop_enable && p->thrdstop_ticks >= p->thrdstop_interval )
       do_thrdstop();
     yield();
@@ -158,6 +159,7 @@ kerneltrap()
   {
     struct proc *p = myproc();
     p->thrdstop_ticks++;
+    //printf("\nticks: %d\n", p->thrdstop_ticks);
     if( p->thrdstop_enable && p->thrdstop_ticks >= p->thrdstop_interval )
       do_thrdstop();
     yield();
