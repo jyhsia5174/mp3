@@ -1,0 +1,14 @@
+*.o
+*.d
+*.asm
+*.sym
+_*
+*tags
+*.out
+*.S
+
+# binary
+fs.img
+kernel
+mkfs
+initcode

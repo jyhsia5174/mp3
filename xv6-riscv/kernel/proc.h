@@ -2,8 +2,8 @@
 
 
 // for mp3
-struct thrd_context_data {
-	uint64 s_regs[12];	/* s0 - s11 */
+  /*
+	uint64 s_regs[12];
 	uint64 ra;
 	uint64 sp;
 
@@ -12,6 +12,40 @@ struct thrd_context_data {
 	uint64 gp;
 	uint64 tp;
 	uint64 epc;
+  */
+struct thrd_context_data {
+  uint64 epc;    // saved user program counter
+  uint64 ra;
+  uint64 sp;
+  uint64 gp;
+  uint64 tp;
+  uint64 t0;
+  uint64 t1;
+  uint64 t2;
+  uint64 s0;
+  uint64 s1;
+  uint64 a0;
+  uint64 a1;
+  uint64 a2;
+  uint64 a3;
+  uint64 a4;
+  uint64 a5;
+  uint64 a6;
+  uint64 a7;
+  uint64 s2;
+  uint64 s3;
+  uint64 s4;
+  uint64 s5;
+  uint64 s6;
+  uint64 s7;
+  uint64 s8;
+  uint64 s9;
+  uint64 s10;
+  uint64 s11;
+  uint64 t3;
+  uint64 t4;
+  uint64 t5;
+  uint64 t6;
 };
 #define MAX_THRD_NUM 16
 
@@ -113,6 +147,7 @@ struct proc {
   int pid;                     // Process ID
 
   // for mp3
+  int thrdstop_enable;
   int thrdstop_ticks;
   int thrdstop_interval;
   int thrdstop_context_id;

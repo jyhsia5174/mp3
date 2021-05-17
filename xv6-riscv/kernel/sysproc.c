@@ -110,7 +110,15 @@ sys_thrdstop(void)
   if (argaddr(2, &handler) < 0)
     return -1;
 
-  return 0;
+  if( thrdstop_context_id < 0 ){
+    thrdstop_context_id = alloc_thrd_context_id();
+    if( thrdstop_context_id == -1 )
+      return -1;
+  }
+
+  set_thrdstop(interval, thrdstop_context_id, handler);
+
+  return thrdstop_context_id;
 }
 
 // for mp3
@@ -120,18 +128,24 @@ sys_cancelthrdstop(void)
   int thrdstop_context_id;
   if (argint(0, &thrdstop_context_id) < 0)
     return -1;
-  return 0;
+
+  return do_thrdstopcancel( thrdstop_context_id );
 }
 
 // for mp3
 uint64
 sys_thrdresume(void)
 {
-  int  thrdstop_context_id, is_exit;
+  int thrdstop_context_id, is_exit;
   if (argint(0, &thrdstop_context_id) < 0)
     return -1;
   if (argint(1, &is_exit) < 0)
     return -1;
+
+  if( is_exit == 0 )
+    do_thrdresume(thrdstop_context_id);
+  else
+    do_thrdexit(thrdstop_context_id);
 
   return 0;
 }

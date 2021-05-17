@@ -702,3 +702,168 @@ procdump(void)
     printf("\n");
   }
 }
+
+/* mp3
+ * return -1 if no empty slot is available
+*/
+int
+alloc_thrd_context_id(void){
+  struct proc *p = myproc();
+
+  for(int i = 0; i < MAX_THRD_NUM; i++){
+    if( !p->thrdstop_context_used[i] ){
+      p->thrdstop_context_used[i] = 1;
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+void
+free_thrd_context_id(int thrd_context_id){
+  struct proc *p = myproc();
+
+  // write dummy to thrdstop_context
+  memset(&(p->thrdstop_context[thrd_context_id]), 0, sizeof(struct thrd_context_data));
+
+  // release thrdstop_context
+  p->thrdstop_context_used[thrd_context_id] = 0;
+}
+
+void
+set_thrdstop(int ticks, int thrd_context_id, uint64 thrdstop_handler){
+  struct proc *p = myproc();
+  // enable thrdstop
+  p->thrdstop_enable = 1;
+  p->thrdstop_ticks = 0;
+  p->thrdstop_interval = ticks;
+  p->thrdstop_context_id = thrd_context_id;
+  p->thrdstop_handler_pointer = thrdstop_handler;
+}
+
+void 
+save_thrd_context(struct thrd_context_data *ct, struct trapframe *tf){
+  ct->epc = tf->epc; 
+  ct->ra = tf->ra;
+  ct->sp = tf->sp;
+  ct->gp = tf->gp;
+  ct->tp = tf->tp;
+  ct->t0 = tf->t0;
+  ct->t1 = tf->t1;
+  ct->t2 = tf->t2;
+  ct->s0 = tf->s0;
+  ct->s1 = tf->s1;
+  ct->a0 = tf->a0;
+  ct->a1 = tf->a1;
+  ct->a2 = tf->a2;
+  ct->a3 = tf->a3;
+  ct->a4 = tf->a4;
+  ct->a5 = tf->a5;
+  ct->a6 = tf->a6;
+  ct->a7 = tf->a7;
+  ct->s2 = tf->s2;
+  ct->s3 = tf->s3;
+  ct->s4 = tf->s4;
+  ct->s5 = tf->s5;
+  ct->s6 = tf->s6;
+  ct->s7 = tf->s7;
+  ct->s8 = tf->s8;
+  ct->s9 = tf->s9;
+  ct->s10 = tf->s10;
+  ct->s11 = tf->s11;
+  ct->t3 = tf->t3;
+  ct->t4 = tf->t4;
+  ct->t5 = tf->t5;
+  ct->t6 = tf->t6;
+}
+
+void 
+load_thrd_context(struct thrd_context_data *ct, struct trapframe *tf){
+  tf->epc = ct->epc; 
+  tf->ra = ct->ra;
+  tf->sp = ct->sp;
+  tf->gp = ct->gp;
+  tf->tp = ct->tp;
+  tf->t0 = ct->t0;
+  tf->t1 = ct->t1;
+  tf->t2 = ct->t2;
+  tf->s0 = ct->s0;
+  tf->s1 = ct->s1;
+  tf->a0 = ct->a0;
+  tf->a1 = ct->a1;
+  tf->a2 = ct->a2;
+  tf->a3 = ct->a3;
+  tf->a4 = ct->a4;
+  tf->a5 = ct->a5;
+  tf->a6 = ct->a6;
+  tf->a7 = ct->a7;
+  tf->s2 = ct->s2;
+  tf->s3 = ct->s3;
+  tf->s4 = ct->s4;
+  tf->s5 = ct->s5;
+  tf->s6 = ct->s6;
+  tf->s7 = ct->s7;
+  tf->s8 = ct->s8;
+  tf->s9 = ct->s9;
+  tf->s10 = ct->s10;
+  tf->s11 = ct->s11;
+  tf->t3 = ct->t3;
+  tf->t4 = ct->t4;
+  tf->t5 = ct->t5;
+  tf->t6 = ct->t6;
+}
+
+void 
+do_thrdstop(void){
+  struct proc *p = myproc();
+  // disable thrdstop 
+  p->thrdstop_enable = 0;
+
+  // save all registers & pc to p->thrdstop_context[context_id]
+  int thrd_context_id = p->thrdstop_context_id;
+  struct thrd_context_data *ct = &(p->thrdstop_context[thrd_context_id]);
+  struct trapframe *tf = p->trapframe;
+  save_thrd_context(ct, tf);
+
+  // change pc to my_thrdstop_handler
+  tf->epc = p->thrdstop_handler_pointer;
+}
+
+void
+do_thrdresume(int thrd_context_id){
+  struct proc *p = myproc();
+
+  // load all registers & pc to p->thrdstop_context[thrd_context_id]
+  struct thrd_context_data *ct = &(p->thrdstop_context[thrd_context_id]);
+  struct trapframe *tf = p->trapframe;
+  load_thrd_context(ct, tf);
+}
+
+void
+do_thrdexit(int thrd_context_id){
+  struct proc *p = myproc();
+  // disable thrdstop
+  p->thrdstop_enable = 0;
+  
+  // free thrdstop_context
+  free_thrd_context_id( thrd_context_id );
+}
+
+int
+do_thrdstopcancel(int thrd_context_id){
+  struct proc *p = myproc();
+
+  // save all registers & pc to p->thrdstop_context[thrd_context_id]
+  if( thrd_context_id != -1 ){
+    struct thrd_context_data *ct = &(p->thrdstop_context[thrd_context_id]);
+    struct trapframe *tf = p->trapframe;
+    save_thrd_context(ct, tf);
+  }
+
+  // disable thrdstop
+  p->thrdstop_enable = 0;
+
+  return p->thrdstop_ticks;
+}
+

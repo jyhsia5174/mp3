@@ -105,6 +105,20 @@ void            yield(void);
 int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
+// mp3
+int             alloc_thrd_context_id(void);
+void            free_thrd_context_id(int thrd_context_id);
+void            set_thrdstop(int ticks, int thrd_context_id, uint64 thrdstop_handler);
+void            do_thrdstop(void);
+void            do_thrdresume(int thrd_context_id);
+void            do_thrdexit(int thrd_context_id);
+int             do_thrdstopcancel(int thrd_context_id);
+
+/*
+int thrdstop(int ticks, int thrdstop_context_id, void (*thrdstop_handler)());
+int thrdresume(int thrdstop_context_id, int is_exit);
+int cancelthrdstop( int thrdstop_context_id );
+*/
 
 // swtch.S
 void            swtch(struct context*, struct context*);
