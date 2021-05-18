@@ -8,6 +8,7 @@
 static struct thread* current_thread = NULL;
 static int id = 1;
 static int __time_slot_size = 10;
+static int RR3_time_slot_size;
 static int is_thread_start = 0;
 static jmp_buf env_st;
 // static jmp_buf env_tmp;
@@ -64,7 +65,7 @@ void thread_add_runqueue(struct thread *t){
 }
 
 void my_thrdstop_handler(void){
-    current_thread->remain_execution_time -= __time_slot_size ;
+    current_thread->remain_execution_time -= RR3_time_slot_size;
     if( current_thread->remain_execution_time <= 0 )
     {
         thread_exit();
@@ -103,7 +104,8 @@ void dispatch(void){
     if(current_thread->buf_set)
     {
         // If remain_execution_time is smaller than time_slot_size, we interrupt the thread after remain_execution_time ticks.
-        int next_time = (__time_slot_size >= current_thread->remain_execution_time )? current_thread->remain_execution_time: __time_slot_size;
+        int next_time = (RR3_time_slot_size >= current_thread->remain_execution_time )? 
+            current_thread->remain_execution_time: RR3_time_slot_size;
 
         thrdstop( next_time, current_thread->thrdstop_context_id, my_thrdstop_handler); // after next_time ticks, my_thrdstop_handler will be called.
         thrdresume(current_thread->thrdstop_context_id, 0);
@@ -115,7 +117,9 @@ void dispatch(void){
         unsigned long new_stack_p;
         new_stack_p = (unsigned long) current_thread->stack_p;      
 
-        current_thread->thrdstop_context_id = thrdstop( __time_slot_size, -1, my_thrdstop_handler);
+        int next_time = (RR3_time_slot_size >= current_thread->remain_execution_time )? 
+            current_thread->remain_execution_time: RR3_time_slot_size;
+        current_thread->thrdstop_context_id = thrdstop(next_time, -1, my_thrdstop_handler);
         if( current_thread->thrdstop_context_id < 0 )
         {
             printf("error: number of threads may exceed\n");
@@ -170,6 +174,7 @@ void thread_exit(void){
 }
 void thread_start_threading(int time_slot_size){
     __time_slot_size = time_slot_size;
+    RR3_time_slot_size = __time_slot_size * 3;
     
     struct thread* tmp_thread = current_thread;
     while (tmp_thread != NULL)

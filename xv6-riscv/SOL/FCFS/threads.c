@@ -64,7 +64,7 @@ void thread_add_runqueue(struct thread *t){
 }
 
 void my_thrdstop_handler(void){
-    current_thread->remain_execution_time -= __time_slot_size ;
+    current_thread->remain_execution_time = 0;
     if( current_thread->remain_execution_time <= 0 )
     {
         thread_exit();
@@ -90,7 +90,7 @@ void thread_yield(void){
         }
         else
         {
-            schedule();
+            // schedule(); // do it until done
             dispatch();
         }
     }
@@ -102,10 +102,7 @@ void thread_yield(void){
 void dispatch(void){
     if(current_thread->buf_set)
     {
-        // If remain_execution_time is smaller than time_slot_size, we interrupt the thread after remain_execution_time ticks.
-        int next_time = (__time_slot_size >= current_thread->remain_execution_time )? current_thread->remain_execution_time: __time_slot_size;
-
-        thrdstop( next_time, current_thread->thrdstop_context_id, my_thrdstop_handler); // after next_time ticks, my_thrdstop_handler will be called.
+        thrdstop(current_thread->remain_execution_time, current_thread->thrdstop_context_id, my_thrdstop_handler); // after next_time ticks, my_thrdstop_handler will be called.
         thrdresume(current_thread->thrdstop_context_id, 0);
     }
     else // init
@@ -115,7 +112,7 @@ void dispatch(void){
         unsigned long new_stack_p;
         new_stack_p = (unsigned long) current_thread->stack_p;      
 
-        current_thread->thrdstop_context_id = thrdstop( __time_slot_size, -1, my_thrdstop_handler);
+        current_thread->thrdstop_context_id = thrdstop(current_thread->remain_execution_time, -1, my_thrdstop_handler);
         if( current_thread->thrdstop_context_id < 0 )
         {
             printf("error: number of threads may exceed\n");
