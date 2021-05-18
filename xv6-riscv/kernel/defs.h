@@ -106,14 +106,14 @@ int             either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int             either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void            procdump(void);
 // mp3
-int             alloc_thrd_context_id(void);
-void            free_thrd_context_id(int thrd_context_id);
-void            enable_thrdstop(void);
-void            set_thrdstop(int ticks, int thrd_context_id, uint64 thrdstop_handler);
+int             alloc_thrdstop_context_id(void);
+void            free_thrdstop_context_id(int thrdstop_context_id);
+void            enable_thrdstop(int ticks, int thrdstop_context_id, uint64 thrdstop_handler);
+int             disable_thrdstop(void);
 void            do_thrdstop(void);
-void            do_thrdresume(int thrd_context_id);
-void            do_thrdexit(int thrd_context_id);
-int             do_thrdstopcancel(int thrd_context_id);
+void            do_thrdresume(int thrdstop_context_id);
+void            do_thrdexit(int thrdstop_context_id);
+int             do_thrdstopcancel(int thrdstop_context_id);
 
 /*
 int thrdstop(int ticks, int thrdstop_context_id, void (*thrdstop_handler)());

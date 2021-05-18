@@ -79,11 +79,15 @@ usertrap(void)
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2)
   {
-    p->thrdstop_ticks++;
-    //printf("\nticks: %d\n", p->thrdstop_ticks);
-    if( p->thrdstop_enable && p->thrdstop_ticks >= p->thrdstop_interval )
-      do_thrdstop();
-    yield();
+    if( p->thrdstop_enable ){
+      p->thrdstop_ticks++;
+      //printf("\nktick %d tticks %d\n", ticks, p->thrdstop_ticks);
+      if( p->thrdstop_ticks >= p->thrdstop_interval)
+        do_thrdstop();
+    }
+    else{
+      yield();
+    }
   }
   usertrapret();
 }
@@ -158,11 +162,15 @@ kerneltrap()
   if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
   {
     struct proc *p = myproc();
-    p->thrdstop_ticks++;
-    //printf("\nticks: %d\n", p->thrdstop_ticks);
-    if( p->thrdstop_enable && p->thrdstop_ticks >= p->thrdstop_interval )
-      do_thrdstop();
-    yield();
+    if( p->thrdstop_enable ){
+      p->thrdstop_ticks++;
+      //printf("\nktick %d tticks %d\n", ticks, p->thrdstop_ticks);
+      if( p->thrdstop_ticks >= p->thrdstop_interval)
+        do_thrdstop();
+    }  
+    else{
+      yield();
+    }
   }
 
   // the yield() may have caused some traps to occur,

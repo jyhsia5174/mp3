@@ -101,12 +101,6 @@ sys_uptime(void)
 uint64
 sys_thrdstop(void)
 {
-  /*
-  int i = 0;
-  while(i < 100000000)
-    i++;
-  */
-  enable_thrdstop();
   int interval, thrdstop_context_id;
   uint64 handler;
   if (argint(0, &interval) < 0)
@@ -117,13 +111,12 @@ sys_thrdstop(void)
     return -1;
 
   if( thrdstop_context_id < 0 ){
-    thrdstop_context_id = alloc_thrd_context_id();
+    thrdstop_context_id = alloc_thrdstop_context_id();
     if( thrdstop_context_id == -1 )
       return -1;
   }
 
-  set_thrdstop(interval, thrdstop_context_id, handler);
-
+  enable_thrdstop(interval, thrdstop_context_id, handler);
   return thrdstop_context_id;
 }
 
@@ -134,8 +127,8 @@ sys_cancelthrdstop(void)
   int thrdstop_context_id;
   if (argint(0, &thrdstop_context_id) < 0)
     return -1;
-
-  return do_thrdstopcancel( thrdstop_context_id );
+  
+  return do_thrdstopcancel(thrdstop_context_id);
 }
 
 // for mp3
@@ -148,7 +141,7 @@ sys_thrdresume(void)
   if (argint(1, &is_exit) < 0)
     return -1;
 
-  if( is_exit == 0 )
+  if(is_exit == 0)
     do_thrdresume(thrdstop_context_id);
   else
     do_thrdexit(thrdstop_context_id);

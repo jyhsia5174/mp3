@@ -708,7 +708,7 @@ procdump(void)
  * return -1 if no empty slot is available
 */
 int
-alloc_thrd_context_id(void){
+alloc_thrdstop_context_id(void){
   struct proc *p = myproc();
 
   for(int i = 0; i < MAX_THRD_NUM; i++){
@@ -722,33 +722,42 @@ alloc_thrd_context_id(void){
 }
 
 void
-free_thrd_context_id(int thrd_context_id){
+free_thrdstop_context_id(int thrdstop_context_id){
   struct proc *p = myproc();
 
   // write dummy to thrdstop_context
-  memset(&(p->thrdstop_context[thrd_context_id]), 0, sizeof(struct thrd_context_data));
+  memset(&(p->thrdstop_context[thrdstop_context_id]), 0, sizeof(struct thrd_context_data));
 
   // release thrdstop_context
-  p->thrdstop_context_used[thrd_context_id] = 0;
+  p->thrdstop_context_used[thrdstop_context_id] = 0;
 }
 
 void
-enable_thrdstop(void){
-  struct proc *p = myproc();
-  p->thrdstop_enable = 1;
-  p->thrdstop_ticks = 0;
-}
-
-void
-set_thrdstop(int ticks, int thrd_context_id, uint64 thrdstop_handler){
+enable_thrdstop(int ticks, int thrdstop_context_id, uint64 thrdstop_handler){
   struct proc *p = myproc();
   p->thrdstop_interval = ticks;
-  p->thrdstop_context_id = thrd_context_id;
+  p->thrdstop_context_id = thrdstop_context_id;
   p->thrdstop_handler_pointer = thrdstop_handler;
+  p->thrdstop_ticks = 0;
+
+  // enable only when thrdstop interval, context, 
+  // handler and ticks are properly set
+  p->thrdstop_enable = 1;
+}
+
+int
+disable_thrdstop(void){
+  struct proc *p = myproc();
+  int thrdticks = p->thrdstop_ticks;
+  p->thrdstop_enable = 0;
+  return thrdticks;
 }
 
 void 
-save_thrd_context(struct thrd_context_data *ct, struct trapframe *tf){
+save_thrd_context(int thrdstop_context_id){
+  struct proc *p = myproc();
+  struct thrd_context_data *ct = &(p->thrdstop_context[thrdstop_context_id]);
+  struct trapframe *tf = p->trapframe;
   ct->epc = tf->epc; 
   ct->ra = tf->ra;
   ct->sp = tf->sp;
@@ -784,7 +793,10 @@ save_thrd_context(struct thrd_context_data *ct, struct trapframe *tf){
 }
 
 void 
-load_thrd_context(struct thrd_context_data *ct, struct trapframe *tf){
+load_thrd_context(int thrdstop_context_id){
+  struct proc *p = myproc();
+  struct thrd_context_data *ct = &(p->thrdstop_context[thrdstop_context_id]);
+  struct trapframe *tf = p->trapframe;
   tf->epc = ct->epc; 
   tf->ra = ct->ra;
   tf->sp = ct->sp;
@@ -819,56 +831,41 @@ load_thrd_context(struct thrd_context_data *ct, struct trapframe *tf){
   tf->t6 = ct->t6;
 }
 
+// invoke by machine time interrupt (which_dev == 2)
 void 
 do_thrdstop(void){
+  disable_thrdstop();
+
+  // Save all registers & pc to p->thrdstop_context[context_id]
   struct proc *p = myproc();
-  // disable thrdstop 
-  p->thrdstop_enable = 0;
+  int thrdstop_context_id = p->thrdstop_context_id;
+  save_thrd_context(thrdstop_context_id);
 
-  // save all registers & pc to p->thrdstop_context[context_id]
-  int thrd_context_id = p->thrdstop_context_id;
-  struct thrd_context_data *ct = &(p->thrdstop_context[thrd_context_id]);
-  struct trapframe *tf = p->trapframe;
-  save_thrd_context(ct, tf);
-
-  // change pc to my_thrdstop_handler
-  tf->epc = p->thrdstop_handler_pointer;
+  // Change p->trapframe->epc to call thrdstop_handler
+  p->trapframe->epc = p->thrdstop_handler_pointer;
 }
 
 void
-do_thrdresume(int thrd_context_id){
-  struct proc *p = myproc();
-
-  // load all registers & pc to p->thrdstop_context[thrd_context_id]
-  struct thrd_context_data *ct = &(p->thrdstop_context[thrd_context_id]);
-  struct trapframe *tf = p->trapframe;
-  load_thrd_context(ct, tf);
+do_thrdresume(int thrdstop_context_id){
+  // Load all registers & pc to p->thrdstop_context[thrdstop_context_id]
+  load_thrd_context(thrdstop_context_id);
 }
 
 void
-do_thrdexit(int thrd_context_id){
-  struct proc *p = myproc();
-  // disable thrdstop
-  p->thrdstop_enable = 0;
-  
-  // free thrdstop_context
-  free_thrd_context_id( thrd_context_id );
+do_thrdexit(int thrdstop_context_id){
+  disable_thrdstop();
+  free_thrdstop_context_id(thrdstop_context_id);
 }
 
 int
-do_thrdstopcancel(int thrd_context_id){
-  struct proc *p = myproc();
+do_thrdstopcancel(int thrdstop_context_id){
+  int thrdticks = disable_thrdstop();
 
-  // save all registers & pc to p->thrdstop_context[thrd_context_id]
-  if( thrd_context_id != -1 ){
-    struct thrd_context_data *ct = &(p->thrdstop_context[thrd_context_id]);
-    struct trapframe *tf = p->trapframe;
-    save_thrd_context(ct, tf);
+  // Save all registers & pc to p->thrdstop_context[thrdstop_context_id]
+  if(thrdstop_context_id != -1){
+    save_thrd_context(thrdstop_context_id);
   }
 
-  // disable thrdstop
-  p->thrdstop_enable = 0;
-
-  return p->thrdstop_ticks;
+  return thrdticks;
 }
 
