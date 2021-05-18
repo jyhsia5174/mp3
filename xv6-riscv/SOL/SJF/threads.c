@@ -64,16 +64,7 @@ void thread_add_runqueue(struct thread *t){
 }
 
 void my_thrdstop_handler(void){
-    current_thread->remain_execution_time -= __time_slot_size ;
-    if( current_thread->remain_execution_time <= 0 )
-    {
-        thread_exit();
-    }
-    else
-    {
-        schedule();
-        dispatch();
-    }
+    thread_exit();
 }
 
 void thread_yield(void){
@@ -102,10 +93,8 @@ void thread_yield(void){
 void dispatch(void){
     if(current_thread->buf_set)
     {
-        // If remain_execution_time is smaller than time_slot_size, we interrupt the thread after remain_execution_time ticks.
-        int next_time = (__time_slot_size >= current_thread->remain_execution_time )? current_thread->remain_execution_time: __time_slot_size;
-
-        thrdstop( next_time, current_thread->thrdstop_context_id, my_thrdstop_handler); // after next_time ticks, my_thrdstop_handler will be called.
+        int next_time = current_thread->remain_execution_time;
+        thrdstop(next_time, current_thread->thrdstop_context_id, my_thrdstop_handler);
         thrdresume(current_thread->thrdstop_context_id, 0);
     }
     else // init
@@ -115,7 +104,8 @@ void dispatch(void){
         unsigned long new_stack_p;
         new_stack_p = (unsigned long) current_thread->stack_p;      
 
-        current_thread->thrdstop_context_id = thrdstop( __time_slot_size, -1, my_thrdstop_handler);
+        int next_time = current_thread->remain_execution_time;
+        current_thread->thrdstop_context_id = thrdstop(next_time, -1, my_thrdstop_handler);
         if( current_thread->thrdstop_context_id < 0 )
         {
             printf("error: number of threads may exceed\n");
@@ -130,17 +120,51 @@ void dispatch(void){
     }
     thread_exit();
 }
+
 void schedule(void){
-    if( is_thread_start == 0 )
+    // one thread remain 
+    if(current_thread->next == current_thread)
+        return;
+
+    // Find min remain_execution_time thread
+    // if equal pick the one arrvied first
+    struct thread* tmp_thread = current_thread;
+    int min_remain_execution_time;
+    struct thread* min_thread = current_thread;
+    min_remain_execution_time = tmp_thread->remain_execution_time;
+    while (1)
     {
-        // execute the first thread in wait_queue at time==0
-        return ;
+        if(tmp_thread->remain_execution_time < min_remain_execution_time){
+            min_remain_execution_time = tmp_thread->remain_execution_time;
+            min_thread = tmp_thread;
+        }
+        tmp_thread = tmp_thread->next;
+        if(tmp_thread == current_thread)
+            break;
     }
-    else
-    {
-        current_thread = current_thread->next;
-    }
+
+    // If min_thread is the current_thread
+    // do nothing
+    if(min_thread == current_thread)
+        return;
+
+    // Remove min_thread from linked list
+    struct thread* minprev = min_thread->previous;
+    struct thread* minnext = min_thread->next;
+    minprev->next = min_thread->next;
+    minnext->previous = min_thread->previous;
+
+    // Insert min_thread before current_thread
+    struct thread* headprev = current_thread->previous;
+    headprev->next = min_thread;
+    min_thread->previous = headprev;
+    current_thread->previous = min_thread;
+    min_thread->next = current_thread;
+
+    // Change current_thread to min_thread
+    current_thread = min_thread;
 }
+
 void thread_exit(void){
     // remove the thread immediately, and cancel previous thrdstop.
     thrdresume(current_thread->thrdstop_context_id, 1);
@@ -150,17 +174,19 @@ void thread_exit(void){
     to_remove->is_exited = 1;
 
     if(to_remove->next != to_remove){
-        //Still more thread to execute
-        schedule() ;
+        //Change current_thread to next
+        current_thread = current_thread->next;
+
         //Connect the remaining threads
         struct thread* to_remove_next = to_remove->next;
         to_remove_next->previous = to_remove->previous;
         to_remove->previous->next = to_remove_next;
-
-
         //free pointers
         free(to_remove->stack);
         free(to_remove);
+
+        //Still more thread to execute
+        schedule();
         dispatch();
     }
     else{

@@ -5,6 +5,7 @@ import subprocess
 from gradelib import *
 
 import os
+os.system("./changethrd.sh 5")
 os.system("make clean")
 
 

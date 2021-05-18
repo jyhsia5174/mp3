@@ -46,26 +46,43 @@ void thread_add_runqueue(struct thread *t){
         return;
     }
     else{
-        if(current_thread->previous->ID == current_thread->ID){
+        struct thread *tmp_thread;
+        if(!is_thread_start)
+            tmp_thread = current_thread;
+        else
+            tmp_thread = current_thread->next;
+
+        while(1){
+            if(is_thread_start && tmp_thread == current_thread)
+                break;
+
+            if(t->remain_execution_time < tmp_thread->remain_execution_time)
+                break;
+            tmp_thread = tmp_thread->next;
+            if(tmp_thread == current_thread)
+                break;
+        }
+
+        if(tmp_thread->previous->ID == tmp_thread->ID){
             //Single thread in queue
-            current_thread->previous = t;
-            current_thread->next = t;
-            t->previous = current_thread;
-            t->next = current_thread;
+            tmp_thread->previous = t;
+            tmp_thread->next = t;
+            t->previous = tmp_thread;
+            t->next = tmp_thread;
         }
         else{
             //Two or more threads in queue
-            current_thread->previous->next = t;
-            t->previous = current_thread->previous;
-            t->next = current_thread;
-            current_thread->previous = t;
+            tmp_thread->previous->next = t;
+            t->previous = tmp_thread->previous;
+            t->next = tmp_thread;
+            tmp_thread->previous = t;
         }
     }
 }
 
 void my_thrdstop_handler(void){
     current_thread->remain_execution_time -= __time_slot_size ;
-    if( current_thread->remain_execution_time <= 0 )
+    if(current_thread->remain_execution_time <= 0)
     {
         thread_exit();
     }
@@ -77,7 +94,7 @@ void my_thrdstop_handler(void){
 }
 
 void thread_yield(void){
-    int consume_ticks = cancelthrdstop( current_thread->thrdstop_context_id ); // cancel previous thrdstop and save the current thread context
+    int consume_ticks = cancelthrdstop(current_thread->thrdstop_context_id); // cancel previous thrdstop and save the current thread context
     if( current_thread->is_yield == 0 )
     {
         current_thread->remain_execution_time -= consume_ticks ;
@@ -102,10 +119,8 @@ void thread_yield(void){
 void dispatch(void){
     if(current_thread->buf_set)
     {
-        // If remain_execution_time is smaller than time_slot_size, we interrupt the thread after remain_execution_time ticks.
         int next_time = (__time_slot_size >= current_thread->remain_execution_time )? current_thread->remain_execution_time: __time_slot_size;
-
-        thrdstop( next_time, current_thread->thrdstop_context_id, my_thrdstop_handler); // after next_time ticks, my_thrdstop_handler will be called.
+        thrdstop(next_time, current_thread->thrdstop_context_id, my_thrdstop_handler);
         thrdresume(current_thread->thrdstop_context_id, 0);
     }
     else // init
@@ -130,17 +145,35 @@ void dispatch(void){
     }
     thread_exit();
 }
+
 void schedule(void){
     if( is_thread_start == 0 )
     {
-        // execute the first thread in wait_queue at time==0
         return ;
     }
     else
     {
-        current_thread = current_thread->next;
+        if(current_thread != current_thread->next 
+                && current_thread->remain_execution_time > current_thread->next->remain_execution_time ){
+            struct thread *next_thread = current_thread->next;
+
+            // update A and D of A B C D
+            current_thread->previous->next = next_thread;
+            next_thread->next->previous = current_thread;
+
+            // update B->D and C->A of A B C D
+            current_thread->next = next_thread->next;
+            next_thread->previous = current_thread->previous;
+            
+            // update B->C and C->B of A B C D
+            current_thread->previous = next_thread;
+            next_thread->next = current_thread;
+
+            current_thread = next_thread;
+        }
     }
 }
+
 void thread_exit(void){
     // remove the thread immediately, and cancel previous thrdstop.
     thrdresume(current_thread->thrdstop_context_id, 1);
@@ -150,17 +183,19 @@ void thread_exit(void){
     to_remove->is_exited = 1;
 
     if(to_remove->next != to_remove){
-        //Still more thread to execute
-        schedule() ;
+        //Change current_thread to next
+        current_thread = current_thread->next;
+
         //Connect the remaining threads
         struct thread* to_remove_next = to_remove->next;
         to_remove_next->previous = to_remove->previous;
         to_remove->previous->next = to_remove_next;
-
-
         //free pointers
         free(to_remove->stack);
         free(to_remove);
+
+        //Still more thread to execute
+        schedule();
         dispatch();
     }
     else{

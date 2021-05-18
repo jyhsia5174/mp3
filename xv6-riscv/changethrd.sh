@@ -21,28 +21,28 @@ SJF=5
 
 case "$1" in
   "$DEFAULT")
-  ln -sf  SOL/Default/threads.h  user/threads.h
-  ln -sf  SOL/Default/threads.c  user/threads.c
+  ln -sf  ../SOL/Default/threads.h  user/threads.h
+  ln -sf  ../SOL/Default/threads.c  user/threads.c
   ;;
 
   "$FCFS")
-  ln -sf  SOL/FCFS/threads.h  user/threads.h
-  ln -sf  SOL/FCFS/threads.c  user/threads.c
+  ln -sf  ../SOL/FCFS/threads.h  user/threads.h
+  ln -sf  ../SOL/FCFS/threads.c  user/threads.c
   ;;
 
   "$RR")
-  ln -sf  SOL/RR/threads.h  user/threads.h
-  ln -sf  SOL/RR/threads.c  user/threads.c
+  ln -sf  ../SOL/RR/threads.h  user/threads.h
+  ln -sf  ../SOL/RR/threads.c  user/threads.c
   ;;
 
   "$PSJF")
-  ln -sf  SOL/PSJF/threads.h  user/threads.h
-  ln -sf  SOL/PSJF/threads.c  user/threads.c
+  ln -sf  ../SOL/PSJF/threads.h  user/threads.h
+  ln -sf  ../SOL/PSJF/threads.c  user/threads.c
   ;;
 
   "$SJF")
-  ln -sf  SOL/SJF/threads.h  user/threads.h
-  ln -sf  SOL/SJF/threads.c  user/threads.c
+  ln -sf  ../SOL/SJF/threads.h  user/threads.h
+  ln -sf  ../SOL/SJF/threads.c  user/threads.c
   ;;
 
   *)
